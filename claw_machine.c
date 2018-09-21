@@ -33,6 +33,10 @@ void save_file_content(char *filename) {
 	size_t capacity = 0;
 	ssize_t byte;
 	FILE *fp = fopen(filename, "r");
+	if (fp == NULL) {
+		printf("file does not exist\n");
+		exit(1);
+	}
 	byte = getline(&line, &capacity, fp);
 	if (byte <= 0) {
 		printf("error read file\n");
