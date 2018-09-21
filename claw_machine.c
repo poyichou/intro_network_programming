@@ -28,6 +28,20 @@ static int it = 1, threadnum, existcus = 0;
 <customer1 arrive time><continuously play round><rest time><total play round number N>
 <customer2 arrive time><continuously play round><rest time><total play round number N>
 */
+struct Customer *create_customer(int id, char *arrive, char *cont, char *rest, char *total) {
+	struct Customer *cus;
+	cus = malloc(sizeof(struct Customer));
+	cus->id = id;
+	cus->arrive = atoi(arrive);
+	cus->cont = atoi(cont);
+	cus->rest = atoi(rest);
+	cus->total = atoi(total);
+	cus->start = cus->arrive;
+	cus->accum = 0;
+	cus->prewait = 0;
+	cus->explored = 0;
+	return cus;
+}
 void save_file_content(char *filename) {
 	char *line = NULL;
 	size_t capacity = 0;
@@ -50,28 +64,19 @@ void save_file_content(char *filename) {
 		exit(1);
 	}
 	int C = atoi(line);
-	char *str;
 	struct Customer *cus;
+	char *str[4];
 	for (int i = 0; i < C; i++) {
 		byte = getline(&line, &capacity, fp);
 		if (byte <= 0) {
 			printf("error read file\n");
 			exit(1);
 		}
-		cus = malloc(sizeof(struct Customer));
-		cus->id = i + 1;
-		str = strtok(line, " ");
-		cus->arrive = atoi(str);
-		str = strtok(NULL, " ");
-		cus->cont = atoi(str);
-		str = strtok(NULL, " ");
-		cus->rest = atoi(str);
-		str = strtok(NULL, " ");
-		cus->total = atoi(str);
-		cus->start = cus->arrive;
-		cus->accum = 0;
-		cus->prewait = 0;
-		cus->explored = 0;
+		str[0] = strtok(line, " ");
+		for (int j = 0; j < 3; j++) {
+			str[j + 1] = strtok(NULL, " ");
+		}
+		cus = create_customer(i + 1, str[0], str[1], str[2], str[3]);
 		cus->next = head;
 		head = cus;
 	}
