@@ -21,7 +21,7 @@ static pthread_t threads[2];
 static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
 static int G = 0, gcount = 0;
-static int it = 1, threadnum;
+static int it = 1, threadnum, existcus = 0;
 /*
 <the guarantee number G>
 <total number of customers>
@@ -93,8 +93,8 @@ void inject(struct Customer *this) {
 }
 void check_finish(int time, int id, struct Customer **customer) {
 	(*customer)->accum++;
-	if (time >= (*customer)->start + (*customer)->cont || (*customer)->accum >= (*customer)->total) {
-		gcount++;
+	gcount++;
+	if (time >= (*customer)->start + (*customer)->cont || (*customer)->accum >= (*customer)->total || gcount >= G) {
 		printf("%d %d finish playing", time, (*customer)->id);
 		if ((*customer)->accum >= (*customer)->total || gcount >= G) {
 			printf(" YES #%d\n", id);
@@ -108,6 +108,7 @@ void check_finish(int time, int id, struct Customer **customer) {
 			inject(*customer);
 		}
 		*customer = NULL;
+		existcus--;
 	}
 }
 
@@ -125,7 +126,13 @@ struct Customer *get_customer(int time, int id) {
 		eject(result);
 		printf("%d %d start playing #%d\n", time, result->id, id);
 		result->start = time;
+		existcus++;
 		return result;
+	} else {
+		// both of machine are released
+		if (existcus == 0) {
+			gcount = 0;
+		}
 	}
 	return NULL;
 }
@@ -149,10 +156,14 @@ void check_waiting(int time, int id) {
 
 int handle_customer(int time, int id, struct Customer **customer) {
 	pthread_mutex_lock(&m);
+	//printf("gcount=%d, G=%d\n", gcount, G);
 	while(it != id){
 		pthread_cond_wait(&cv, &m);
 	}
-	int get = 0;
+	// handle existing customer
+	if (*customer) {
+		check_finish(time, id, customer);
+	}
 	// no existing customer
 	if (*customer == NULL) {
 		// no more customer
@@ -165,13 +176,8 @@ int handle_customer(int time, int id, struct Customer **customer) {
 			return 0;
 		}
 		*customer = get_customer(time, id);
-		get = 1;
 	}
 	check_waiting(time, id);
-	// handle existing customer
-	if (get == 0) {
-		check_finish(time, id, customer);
-	}
 	if (threadnum == 2) {
 		// change to other thread
 		it = it % 2 + 1;
